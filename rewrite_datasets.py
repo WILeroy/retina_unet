@@ -1,3 +1,6 @@
+""" Script to load datasets (DRIVE and CHASEDB) and write to *.hdf5.
+"""
+
 import os
 import configparser
 

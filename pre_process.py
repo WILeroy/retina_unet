@@ -1,3 +1,6 @@
+""" Functions about image processing.
+"""
+
 import numpy as np
 from PIL import Image
 from cv2 import cv2

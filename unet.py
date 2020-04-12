@@ -3,9 +3,9 @@ from tensorflow.keras.layers import (Conv2D, Dropout, Input, MaxPooling2D,
                                      Softmax, UpSampling2D, concatenate)
 
 
-# Define unet model.
-def get_unet(patch_height, patch_width, n_ch):
-    inputs = Input(shape=(patch_height, patch_width, n_ch))
+# Define unet model by function API.
+def Unet(shape):
+    inputs = Input(shape=shape)
     # Encode.
     conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
     conv1 = Dropout(0.2)(conv1)
@@ -38,6 +38,6 @@ def get_unet(patch_height, patch_width, n_ch):
     outputs = Softmax()(conv6)
     #
     model = Model(inputs=inputs, outputs=outputs)
-    model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
     return model
