@@ -50,6 +50,8 @@ def save_DRIVE_to_h5py(train_test, num, config):
               save_path = './logs/DRIVE_masks_' + train_test + '.png')
 
     save_path = config.get('DRIVE', 'h5py_save_path')
+    if os.path.exists(save_path) == False:
+        os.system('mkdir {}'.format(save_path))
     write_hdf5(images, save_path + train_test + '_images' + '.hdf5')
     write_hdf5(labels, save_path + train_test + '_labels' + '.hdf5')
     write_hdf5(masks, save_path + train_test + '_masks' + '.hdf5')
@@ -90,6 +92,8 @@ def save_CHASEDB_to_h5py(train_test, num, config):
               save_path = './logs/CHASEDB_masks_' + train_test + '.png')
 
     save_path = config.get('CHASEDB', 'h5py_save_path')
+    if os.path.exists(save_path) == False:
+        os.system('mkdir {}'.format(save_path))
     write_hdf5(images, save_path + train_test + '_images' + '.hdf5')
     write_hdf5(labels, save_path + train_test + '_labels' + '.hdf5')
     write_hdf5(masks, save_path + train_test + '_masks' + '.hdf5')

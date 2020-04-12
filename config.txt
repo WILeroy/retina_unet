@@ -30,9 +30,13 @@ sub_width = 48
 stride_h = 16
 stride_w = 16
 
-[experiment]
-name = retina
-
 [train]
+name = retina
+datasets = DRIVE
 epochs_num = 20
 batch_size = 32
+
+[evaluate]
+name = retina
+best_last = best
+datasets = DRIVE

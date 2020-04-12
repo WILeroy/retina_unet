@@ -9,28 +9,37 @@ from cv2 import cv2
 
 class Generator:
 
-    def __init__(self, name, config):
+    def __init__(self, name, train_test, config):
         """
         name: CHASEDB or DRIVE.
         """
 
         self.name = name
+        self.train_test = train_test
+        assert (name == 'CHASEDB' or name == 'DRIVE')
+        assert (train_test == 'train' or train_test == 'test')
+
         self.height = int(config.get(name, 'height'))
         self.width = int(config.get(name, 'width'))
+        self.datasets_path = config.get(name, 'h5py_save_path')
+
         self.sub_height = int(config.get('generator', 'sub_height'))
         self.sub_width = int(config.get('generator', 'sub_width'))
         self.stride_h = int(config.get('generator', 'stride_h'))
         self.stride_w = int(config.get('generator', 'stride_w'))
-        self.datasets_path = config.get(name, 'h5py_save_path')
-        self.images_path = self.datasets_path + 'train_images.hdf5'
-        self.labels_path = self.datasets_path + 'train_labels.hdf5'
-        self.mask_path = self.datasets_path + 'train_masks.hdf5'
+        assert (self.sub_height % self.stride_h == 0)
+        assert (self.sub_width % self.stride_w == 0)
+
+        self.images_path = self.datasets_path + train_test + '_images.hdf5'
+        self.labels_path = self.datasets_path + train_test + '_labels.hdf5'
+        self.mask_path = self.datasets_path + train_test + '_masks.hdf5'
 
 
     def __call__(self):
 
         images = load_hdf5(self.images_path)
         labels = load_hdf5(self.labels_path)
+        masks = load_hdf5(self.mask_path) / 255.
 
         images = pre_processing(images)
         labels = labels / 255.
@@ -39,14 +48,19 @@ class Generator:
         assert (np.min(labels) == 0 and np.max(labels) == 1)
 
         visualize(group_images(images, 5),
-              save_path = './logs/' + self.name + '_images_pre.png')#.show()
+            './logs/' + self.name + '_' + self.train_test + '_images.png')
         visualize(group_images(labels, 5),
-              save_path = './logs/' + self.name + '_labels_pre.png')#.show()
+            './logs/' + self.name + '_' + self.train_test + '_labels.png')
 
-        return self.extract_ordered(images, labels)
+        if self.train_test == 'train':
+            return self.extract_ordered(images, labels)
 
+        if self.train_test == 'test':
+            sub_images, sub_labels = self.extract_ordered(images, labels)
+            return (sub_images, images, labels, masks)
 
     def extract_ordered(self, images, labels):
+
         print('--------Extract subimages--------')
         h_num = 1 + int((self.height - self.sub_height) / self.stride_h)
         w_num = 1 + int((self.width - self.sub_width) / self.stride_w)
@@ -95,11 +109,12 @@ class Generator:
 
         return sub_images, sub_labels
 
+
 def main():
     config = configparser.RawConfigParser()
     config.read('config.txt')
 
-    sub_images, sub_labels = Generator('DRIVE', config)()
+    sub_images, sub_labels = Generator('DRIVE', 'train', config)()
     # onehot
     one_hot = to_categorical(sub_labels)
 
@@ -108,10 +123,23 @@ def main():
     #print(one_hot.shape, one_hot.dtype, np.max(one_hot), np.min(one_hot))
 
     visualize(group_images(sub_images[:34*35], 34),
-          save_path = './logs/' + 'subimages.png')
+          save_path = './logs/' + 'train_sub_images.png')
     visualize(group_images(sub_labels[:34*35], 34),
-          save_path = './logs/' + 'sublabels.png')
+          save_path = './logs/' + 'train_sub_labels.png')
     visualize(group_images(one_hot[:34*35, :, :, :1], 34),
-          save_path = './logs/' + 'onehot0.png')
+          save_path = './logs/' + 'train_onehot0.png')
     visualize(group_images(one_hot[:34*35, :, :, 1:], 34),
-          save_path = './logs/' + 'onehot1.png')
+          save_path = './logs/' + 'train_onehot1.png')
+
+    sub_images, labels, masks = Generator('DRIVE', 'test', config)()
+    
+    visualize(group_images(sub_images[:34*35], 34),
+          save_path = './logs/' + 'test_sub_images.png')
+    visualize(group_images(labels, 4),
+          save_path = './logs/' + 'test_labels.png')
+    visualize(group_images(masks, 4),
+          save_path = './logs/' + 'test_masks.png')
+    
+
+if __name__ == '__main__':
+    main()

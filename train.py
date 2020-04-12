@@ -12,7 +12,7 @@ from unet import Unet
 config = configparser.RawConfigParser()
 config.read('config.txt')
 
-experiment_name = config.get('experiment', 'name')
+experiment_name = config.get('train', 'name')
 epochs_num = int(config.get('train', 'epochs_num'))
 batch_size = int(config.get('train', 'batch_size'))
 
