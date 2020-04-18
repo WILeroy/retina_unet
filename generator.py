@@ -8,12 +8,10 @@ from utils import group_images, load_hdf5, visualize
 from cv2 import cv2
 
 class Generator:
-
     def __init__(self, name, train_test, config):
         """
         name: CHASEDB or DRIVE.
         """
-
         self.name = name
         self.train_test = train_test
         assert (name == 'CHASEDB' or name == 'DRIVE')
@@ -34,23 +32,23 @@ class Generator:
         self.labels_path = self.datasets_path + train_test + '_labels.hdf5'
         self.mask_path = self.datasets_path + train_test + '_masks.hdf5'
 
-
     def __call__(self):
-
         images = load_hdf5(self.images_path)
         labels = load_hdf5(self.labels_path)
-        masks = load_hdf5(self.mask_path) / 255.
+        masks = load_hdf5(self.mask_path)
 
         images = pre_processing(images)
-        labels = labels / 255.
+        if np.max(labels) > 1:
+            labels = labels / 255.
+        masks = masks / 255.
 
-        assert (np.min(images) >= 0 and np.max(images) <= 1)
-        assert (np.min(labels) == 0 and np.max(labels) == 1)
+        #visualize(group_images(images, 4)).show()
+        #visualize(group_images(labels, 4)).show()
+        #visualize(group_images(masks, 4)).show()
 
-        visualize(group_images(images, 5),
-            './logs/' + self.name + '_' + self.train_test + '_images.png')
-        visualize(group_images(labels, 5),
-            './logs/' + self.name + '_' + self.train_test + '_labels.png')
+        #print(images.shape, images.dtype, np.min(images), np.max(images))
+        #print(labels.shape, labels.dtype, np.min(labels), np.max(labels))
+        #print(masks.shape, masks.dtype, np.min(masks), np.max(masks))
 
         if self.train_test == 'train':
             return self.extract_ordered(images, labels)
@@ -59,8 +57,8 @@ class Generator:
             sub_images, sub_labels = self.extract_ordered(images, labels)
             return (sub_images, images, labels, masks)
 
-    def extract_ordered(self, images, labels):
 
+    def extract_ordered(self, images, labels):
         print('--------Extract subimages--------')
         h_num = 1 + int((self.height - self.sub_height) / self.stride_h)
         w_num = 1 + int((self.width - self.sub_width) / self.stride_w)
@@ -104,42 +102,42 @@ class Generator:
                     sub_images[count] = pad_image[hstart:hend, wstart:wend]
                     sub_labels[count] = pad_label[hstart:hend, wstart:wend]
                     count += 1
-
         assert (count == num_of_extract)
 
         return sub_images, sub_labels
 
 
 def main():
+    """ Unit test.
+    """
     config = configparser.RawConfigParser()
     config.read('config.txt')
 
     sub_images, sub_labels = Generator('DRIVE', 'train', config)()
-    # onehot
-    one_hot = to_categorical(sub_labels)
+    print(sub_images.shape, sub_images.dtype, np.min(sub_images), np.max(sub_images))
+    print(sub_labels.shape, sub_labels.dtype, np.min(sub_labels), np.max(sub_labels))
+    visualize(group_images(sub_images[:34*35], 34)).show()
+    visualize(group_images(sub_labels[:34*35], 34)).show()
 
-    #print(sub_images.shape, sub_images.dtype, np.max(sub_images), np.min(sub_images))
-    #print(sub_labels.shape, sub_labels.dtype, np.max(sub_labels), np.min(sub_labels))
-    #print(one_hot.shape, one_hot.dtype, np.max(one_hot), np.min(one_hot))
+    sub_images, images, labels, masks = Generator('DRIVE', 'test', config)()
+    print(sub_images.shape, sub_images.dtype, np.min(sub_images), np.max(sub_images))
+    print(images.shape, images.dtype, np.min(images), np.max(images))
+    print(labels.shape, labels.dtype, np.min(labels), np.max(labels))
+    print(masks.shape, masks.dtype, np.min(masks), np.max(masks))
+    visualize(group_images(sub_images[:34*35], 34)).show()
 
-    visualize(group_images(sub_images[:34*35], 34),
-          save_path = './logs/' + 'train_sub_images.png')
-    visualize(group_images(sub_labels[:34*35], 34),
-          save_path = './logs/' + 'train_sub_labels.png')
-    visualize(group_images(one_hot[:34*35, :, :, :1], 34),
-          save_path = './logs/' + 'train_onehot0.png')
-    visualize(group_images(one_hot[:34*35, :, :, 1:], 34),
-          save_path = './logs/' + 'train_onehot1.png')
+    sub_images, sub_labels = Generator('CHASEDB', 'train', config)()
+    print(sub_images.shape, sub_images.dtype, np.min(sub_images), np.max(sub_images))
+    print(sub_labels.shape, sub_labels.dtype, np.min(sub_labels), np.max(sub_labels))
+    visualize(group_images(sub_images[:59*61], 61)).show()
+    visualize(group_images(sub_labels[:59*61], 61)).show()
 
-    sub_images, labels, masks = Generator('DRIVE', 'test', config)()
-    
-    visualize(group_images(sub_images[:34*35], 34),
-          save_path = './logs/' + 'test_sub_images.png')
-    visualize(group_images(labels, 4),
-          save_path = './logs/' + 'test_labels.png')
-    visualize(group_images(masks, 4),
-          save_path = './logs/' + 'test_masks.png')
-    
+    sub_images, images, labels, masks = Generator('CHASEDB', 'test', config)()
+    print(sub_images.shape, sub_images.dtype, np.min(sub_images), np.max(sub_images))
+    print(images.shape, images.dtype, np.min(images), np.max(images))
+    print(labels.shape, labels.dtype, np.min(labels), np.max(labels))
+    print(masks.shape, masks.dtype, np.min(masks), np.max(masks))
+    visualize(group_images(sub_images[:59*61], 61)).show()
 
 if __name__ == '__main__':
     main()

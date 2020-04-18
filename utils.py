@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 from PIL import Image
 
+
 def load_hdf5(infile):
     with h5py.File(infile, "r") as f:
         return f["images"][()]
@@ -32,7 +33,7 @@ def group_images(data, per_row):
 
 
 # Visualize image (as PIL image, NOT as matplotlib).
-def visualize(data, save_path):
+def visualize(data, save_path=None):
     assert (len(data.shape) == 3)
     
     img = None
@@ -45,5 +46,6 @@ def visualize(data, save_path):
     else:
         img = Image.fromarray((data*255).astype(np.uint8))
     
-    img.save(save_path)
+    if save_path != None:
+        img.save(save_path)
     return img

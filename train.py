@@ -17,9 +17,10 @@ epochs_num = int(config.get('train', 'epochs_num'))
 batch_size = int(config.get('train', 'batch_size'))
 
 # Load datasets.
+datasets = config.get('train', 'datasets')
 sub_height = int(config.get('generator', 'sub_height'))
 sub_width = int(config.get('generator', 'sub_width'))
-x_train, y_train = Generator('DRIVE', config)()
+x_train, y_train = Generator(datasets, 'train', config)()
 y_train = to_categorical(y_train)
 
 print(np.max(x_train), np.min(x_train), x_train.shape, x_train.dtype)

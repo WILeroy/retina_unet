@@ -3,10 +3,12 @@ import configparser
 import numpy as np
 from PIL import Image
 from tensorflow.keras.models import model_from_json
+from tensorflow.keras.utils import to_categorical
 
 from generator import Generator
+from metric import SegmentationMetric
 from pre_process import pre_processing
-from utils import visualize, group_images
+from utils import group_images, visualize
 
 
 def load_model(name, best_last):
@@ -41,15 +43,15 @@ def merge(outputs, masks):
 
     for i in range(full_num):
 
-        full = np.zeros((pad_height, pad_width, 1))
+        full = np.zeros([pad_height, pad_width, 1])
         
-        # 4 trig
+        # 4 corner.
         full[:16, :16] = outputs[offset][:16, :16]
         full[:16, -16:] = outputs[offset + w_num][:16, -16:]
         full[-16:, :16] = outputs[offset + (w_num + 1) * h_num][-16:, :16]
         full[-16:, -16:] = outputs[offset + sub_num - 1][-16:, -16:]
         
-        # 4 side
+        # 4 side.
         for h in range(h_num + 1):
             full[16 * (h + 1):16 * (h + 2), :16] = outputs[
                 offset + h * (w_num + 1)][16:32, :16]
@@ -62,7 +64,7 @@ def merge(outputs, masks):
             full[-16:, 16 * (w + 1):16 * (w + 2)] = outputs[
                 offset + h_num * (w_num + 1) + w][-16:, 16:32]
             
-        # inside
+        # inside.
         for h in range(h_num + 1):
             for w in range(w_num + 1):
                 full[16 * (h + 1):16 * (h + 2), 16 * (w + 1):16 * (w + 2)] = (
@@ -78,41 +80,64 @@ def merge(outputs, masks):
     return merge_outputs
 
 
-def main():
+def visualize_predicts(num, masks, labels, predicts):
+    """
+    red: error
+    green: missed
+    light blue: right
+    """
+    outputs = labels * 2 + predicts
+    outputs = to_categorical(outputs)
+    vis = np.zeros([labels.shape[0], labels.shape[1], labels.shape[2], 3])
+    vis[:, :, :, 0] = outputs[:, :, :, 1]
+    vis[:, :, :, 1] = outputs[:, :, :, 2] + outputs[:, :, :, 3]
+    vis[:, :, :, 2] = outputs[:, :, :, 3] 
+    for i in range(20):
+        visualize(vis[i], './logs/'+str(i+1)+'.png')
 
-    print('--------Load config--------')
+
+def main():
+    # Load config.
     config = configparser.RawConfigParser()
     config.read('config.txt')
     
     name = config.get('evaluate', 'name')
     best_last = config.get('evaluate', 'best_last')
+    
+    # Load datasets.
     datasets = config.get('evaluate', 'datasets')
-    print('model: {}'.format(name))
-    print('weights: {}'.format(best_last))
-    print('datasets: {}'.format(datasets))
-
     sub_images, images, labels, masks = Generator(datasets, 'test', config)()
     
-    """
     print(sub_images.shape, sub_images.dtype,
-          np.max(sub_images), np.min(sub_images))
-    print(labels.shape, labels.dtype, np.max(labels), np.min(labels))
-    print(masks.shape, masks.dtype, np.max(masks), np.min(masks))
-    """
+          np.min(sub_images), np.max(sub_images))
+    print(labels.shape, labels.dtype, np.min(labels), np.max(labels))
+    print(masks.shape, masks.dtype, np.min(masks), np.max(masks))
     
-    print('--------Load model--------')
+    # Load model and predict.
     unet = load_model(name, best_last)
-    outputs = unet.predict(sub_images[:35*34])
-    outputs = np.argmax(outputs, axis=3)
+    sub_predicts = unet.predict(sub_images)
+    sub_predicts = np.argmax(sub_predicts, axis=3)
+    predicts = merge(sub_predicts.reshape([-1, 48, 48, 1]), masks)
 
-    outputs = merge(outputs.reshape([35*34, 48, 48, 1]), masks[:1])
+    print(predicts.shape, images.shape, labels.shape)
+    visualize_predicts(20, masks, labels, predicts)
 
-    print(outputs[0].shape, images[0].shape, labels[0].shape)
-
-    outputs = np.concatenate((
-        np.concatenate((images[0], labels[0]), axis=2), outputs[0]), axis=2)
-    visualize(outputs, './logs/retina_pred.png')
+    # Evaluate.
+    labels = (labels - ((masks + 1) % 2)).astype(np.int8)
+    metric = SegmentationMetric(2)
+    mIOU = 0
+    PA = 0
+    mPA = 0
+    for i in range(20):
+        metric.add_batch(labels[i], predicts[i].astype(np.int8))
+        mIOU += metric.mean_intersection_over_union()
+        PA += metric.pixel_accuracy()
+        mPA += metric.mean_pixel_accuracy()
+        metric.reset()
+    print('mIOU:', mIOU/20)
+    print('PA:', PA/20)
+    print('mPA:', mPA/20)
+    
 
 if __name__ == '__main__':
-
     main()

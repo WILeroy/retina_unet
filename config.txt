@@ -1,28 +1,30 @@
 [DRIVE]
 height = 584
 width = 565
+
 test_images_path = ./datasets/DRIVE/test/images/
 test_labels_path = ./datasets/DRIVE/test/1st_manual/
 test_masks_path = ./datasets/DRIVE/test/mask/
-
 train_images_path = ./datasets/DRIVE/training/images/
 train_labels_path = ./datasets/DRIVE/training/1st_manual/
 train_masks_path = ./datasets/DRIVE/training/mask/
 
 h5py_save_path = ./datasets/DRIVE/h5py/
 
+
 [CHASEDB]
 height = 960
 width = 999
+
 test_images_path = ./datasets/CHASEDB/test/images/
 test_labels_path = ./datasets/CHASEDB/test/1st_manual/
 test_masks_path = ./datasets/CHASEDB/test/mask/
-
 train_images_path = ./datasets/CHASEDB/training/images/
 train_labels_path = ./datasets/CHASEDB/training/1st_manual/
 train_masks_path = ./datasets/CHASEDB/training/mask/
 
 h5py_save_path = ./datasets/CHASEDB/h5py/
+
 
 [generator]
 sub_height = 48
@@ -30,11 +32,13 @@ sub_width = 48
 stride_h = 16
 stride_w = 16
 
+
 [train]
 name = retina
 datasets = DRIVE
 epochs_num = 20
 batch_size = 32
+
 
 [evaluate]
 name = retina
