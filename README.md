@@ -18,7 +18,7 @@ test num|20|8
 * 标注图像, 白色(255)为血管标注, 黑色(0)为背景.
 * 掩码图像, 用于区分眼球部分和非眼球部分.
 
-![dataset_sample](./logs/dataset_sample.png)
+![dataset_sample](https://github.com/WILeroy/retina_unet/blob/master/logs/dataset_sample.png)
 
 DRIVE和CHASEDB两个数据集的下载地址如下:
 
@@ -40,7 +40,7 @@ DRIVE和CHASEDB两个数据集的下载地址如下:
 
 该项目使用unet实现眼底血管分割目标, 但是所实现的模型是在原有的unet模型上修改得到的, 该模型只进行了两次下采样和上采样, 计划处理的输入图像是48*48的小样本. 下面是模型结构图:
 
-![retina_model](./logs/retina_model.png)
+![retina_model](https://github.com/WILeroy/retina_unet/blob/master/logs/retina_model.png)
 
 ## 训练数据生成器
 
@@ -72,4 +72,4 @@ DRIVE和CHASEDB两个数据集的下载地址如下:
 
 下面是输出结果示例. 可视化结果中, 亮色代表正确分割, 绿色代表漏分割, 红色代表错误分割.
 
-![result](/home/leroy/Desktop/code/retina_unet/logs/result.png)
+![result](https://github.com/WILeroy/retina_unet/blob/master/logs/result.png)
