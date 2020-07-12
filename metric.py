@@ -45,7 +45,7 @@ class SegmentationMetric(object):
 
 
 def main():
-    label = np.array([1, 1, 0, 0, 1, 0, 0, 1, 1]).reshape([3, 3])
+    label = np.array([1, 1, -1, 0, 1, 0, 0, 1, 1]).reshape([3, 3])
     logits = np.array([0, 1, 1, 0, 1, 0, 1, 1, 1]).reshape([3, 3])
     print(label)
     print(logits)

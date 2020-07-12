@@ -5,7 +5,6 @@ import numpy as np
 from PIL import Image
 from cv2 import cv2
 
-
 def pre_processing(data):
     assert (len(data.shape) == 4)
     assert (data.shape[3] == 3)
@@ -64,7 +63,7 @@ def adjust_gamma(images, gamma=1.0):
     assert (images.shape[3] == 1)
 
     invGamma = 1.0 / gamma
-    table = np.array([((i / 255.0) ** invGamma) * 255 
+    table = np.array([((i / 255.0) ** invGamma) * 255
                       for i in np.arange(0, 256)]).astype("uint8")
     new_images = np.empty(images.shape)
     for i in range(images.shape[0]):
@@ -72,3 +71,8 @@ def adjust_gamma(images, gamma=1.0):
                                          dtype = np.uint8), table)
 
     return new_images
+
+if __name__ == '__main__':
+    from utils import load_hdf5
+    images = load_hdf5('./datasets/CHASEDB/h5py/train_images.hdf5')
+    images = pre_processing(images)

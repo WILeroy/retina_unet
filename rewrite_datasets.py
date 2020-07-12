@@ -1,4 +1,6 @@
 """ Script to load datasets (DRIVE and CHASEDB) and write to *.hdf5.
+@Author: wileroy
+@Date  : 20-7-12
 """
 
 import os
@@ -47,19 +49,6 @@ def save_DRIVE_to_h5py(train_test, num, config):
     print('labels', labels.shape, labels.dtype, np.min(labels), np.max(labels))
     print('masks', masks.shape, masks.dtype, np.min(masks), np.max(masks))
 
-    """ Visualize datasets to check integrity."""
-    """
-    visualize(group_images(images, 5),
-              save_path = './logs/DRIVE_' + train_test + '_images.png')
-    visualize(group_images(labels, 5),
-              save_path = './logs/DRIVE_' + train_test + '_labels.png')
-    visualize(group_images(masks, 5),
-              save_path = './logs/DRIVE_' + train_test + '_masks.png')
-    """
-    #visualize(group_images(images, 4)).show()
-    #visualize(group_images(labels, 4)).show()
-    #visualize(group_images(masks, 4)).show()
-
     save_path = config.get('DRIVE', 'h5py_save_path')
     if os.path.exists(save_path) == False:
         os.system('mkdir {}'.format(save_path))
@@ -99,19 +88,6 @@ def save_CHASEDB_to_h5py(train_test, num, config):
     print('images', images.shape, images.dtype, np.min(images), np.max(images))
     print('labels', labels.shape, labels.dtype, np.min(labels), np.max(labels))
     print('masks', masks.shape, masks.dtype, np.min(masks), np.max(masks))
-
-    """ Visualize datasets to check integrity."""
-    """
-    visualize(group_images(images, 4),
-              save_path = './logs/CHASEDB_' + train_test + '_images.png')
-    visualize(group_images(labels, 4),
-              save_path = './logs/CHASEDB_' + train_test + '_labels.png')
-    visualize(group_images(masks, 4),
-              save_path = './logs/CHASEDB_' + train_test + '_masks.png')
-    """
-    #visualize(group_images(images, 4)).show()
-    #visualize(group_images(labels, 4)).show()
-    #visualize(group_images(masks, 4)).show()
 
     save_path = config.get('CHASEDB', 'h5py_save_path')
     if os.path.exists(save_path) == False:

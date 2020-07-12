@@ -1,10 +1,27 @@
 # retina-unet
-该项目的实现参考了[orobix/retina-unet](https://github.com/orobix/retina-unet), 本人仅对其部分代码进行了重构. 重构的目的是使项目可以基于tensorflow2运行, 并且增加代码的可读性.
 
-## 数据集
+该项目的实现参考了[orobix/retina-unet](https://github.com/orobix/retina-unet), 本人仅对其部分代码进行了重构. 重构的目的是使项目可以基于tensorflow2运行, 并且增加代码的可读性. 项目共完成了以下几部分的内容:
 
-该项目的数据集有两个: DRIVE, CHASEDB, 以下是数据集的参数和样例.
+- [x] 视网膜图像预处理
+- [x] U-Net网络模型(tf2)
+- [x] 模型训练
+- [x] 结果评估与可视化
 
+## 0 运行环境(主要)
+
+```
+h5py >= 2.10.0
+numpy >= 1.18.1
+opencv-python >= 3.4.9.33
+Pillow >= 7.1.2
+pydot-ng >= 2.0.0
+tensorflow-gpu >= 2.1.0
+```
+## 1 视网膜图像预处理
+
+### 1.1 数据集
+
+该项目的数据集有两个: DRIVE, CHASEDB. 数据集的具体参数与样例如下.
 
 参数\名称|DRIVE|CHASEDB
 :-:|:--:|:-:
@@ -12,64 +29,54 @@ shape|(584, 565)|(960, 999)
 train num|20|20
 test num|20|8
 
-下面是数据集的一个样本, 三幅图像从左到右依次是:
+![dataset_sample](./resources/datasets_sample.jpg)
 
-* 原始图像(数据集中为RGB图像, 为了展示, 此处转为了灰度图像).
-* 标注图像, 白色(255)为血管标注, 黑色(0)为背景.
-* 掩码图像, 用于区分眼球部分和非眼球部分.
+### 1.2 数据集准备与预处理
 
-![dataset_sample](https://github.com/WILeroy/retina_unet/blob/master/logs/dataset_sample.png)
+DRIVE和CHASEDB两个数据集的下载地址分别为:[DRIVE](https://pan.baidu.com/s/1M9k07LKul2c8gZBUzJ-TzA), w2cf; [CHAEDB](https://pan.baidu.com/s/1ZigFfnciLkQBd5AgMFWldg), 6tac. 数据集准备时, 首先从这两个网址下载数据集, 并将其分别解压到./datasets/路径下, 然后运行rewrite_datasets.py. 最终的结果如下所示, 其中h5py/路径下是重写的数据集(便于后续读取).
 
-DRIVE和CHASEDB两个数据集的下载地址如下:
+* 数据集结构\
+datasets/\
+├── CHASEDB\
+│   ├── h5py\
+│   ├── test\
+│   └── training\
+└── DRIVE\
+    ├── h5py\
+    ├── test\
+    └── training
 
-* [DRIVE](https://pan.baidu.com/s/1M9k07LKul2c8gZBUzJ-TzA), 提取码: w2cf
-* [CHAEDB](https://pan.baidu.com/s/1ZigFfnciLkQBd5AgMFWldg), 提取码: 6tac
+数据集的预处理过程包括4步: 1) 彩色图像转灰度图像; 2) 数据标准化; 3) 直方图均衡化; 4) 伽马变换. 下面是预处理过程的可视化结果, 可以发现, 两张视网膜图像经过处理后都得到了较好的结果.
 
-## 数据集准备
+![preprocess1](./resources/preprocess.jpg)
+![preprocess2](./resources/preprocess2.jpg)
 
-在运行该项目之前, 首先需要准备数据集, 该过程如下:
+## 2 U-Net网络模型(tf2)
 
-1. 下载数据集.
-2. 在项目的根目录下创建文件夹datasets.
-3. 将下载所得的数据集解压到datasets中, 并根据文件夹结构修改配置文件config.txt中的数据集路径和合适的h5py文件存储路径.
-4. 运行rewrite_datasets.py.
+该项目使用U-Net实现眼底血管分割目标, 但是所实现的模型是对原始U-Net模型微调后的结果, 结构图如下所示. 
 
-以上过程会读取数据集, 然后将数据按类别分别写入*.hdf5文件, 这样做是为了使之后读取数据更简单.
+![retina_model](./resources/U-Net.png)
 
-## 模型结构
+## 3 模型训练
 
-该项目使用unet实现眼底血管分割目标, 但是所实现的模型是在原有的unet模型上修改得到的, 该模型只进行了两次下采样和上采样, 计划处理的输入图像是48*48的小样本. 下面是模型结构图:
+训练模型包含2个步骤: 
 
-![retina_model](https://github.com/WILeroy/retina_unet/blob/master/logs/retina_model.png)
+1. 修改配置文件config.txt中[train]部分的参数, 其中name用于命名本次实验, datasets用于指定本次实验所用的数据集.
+2. 运行训练脚本train.py. 训练之后, 中间结果, 模型文件和权重文件都将保存在./logs/$name$/目录之下.
 
-## 训练数据生成器
+## 4 结果评估与可视化
 
-原有的两个数据集都只有20张训练图片, 为了获得更好的训练效果, 需要对现有的训练样本进行重复提取. 重复提取时, 以一张图像的左上角为出发点, 每次提取一个48*48的小样本, 然后平移一定距离, 再次提取, 如此重复. 提取得到的小样本虽然存在重复区域, 但是因为在小样本中相对位置的不同, 还是能为训练提供有效信息.
+与训练部分相同, 结果评估包含2个步骤:
 
-## 训练过程
+1. 修改配置文件config.txt中[evaluate]部分, 保证实验名称与数据集是正确的.
+2. 运行测评脚本evaluate.py. 测试结果包括两部分: 一部分为可视化的分割结果, 输出到./logs/$name$/predicts/路径下; 另一部分为性能指标, mIOU, AP, mAP.
 
-训练模型包含以下几个步骤: 
+下面是性能评估与可视化结果, 在可视化部分, 绿色代表正确分割, 红色代表错误分割, 蓝色代表漏分割. 
 
-1. 修改配置文件config.txt中generator, train两部分.
+数据集\名称|mIOU|PA|mPA
+:-:|:--:|:-:|:-:
+DRIVE|0.818006|0.954971|0.879082|
+CHASEDB|0.80988|0.961048|0.9027
 
-   generator的sub_height, sub_width指明生成器输出小样本的尺寸(不建议修改这两个参数); stride_h, stride_w则指明生成器生成小样本时每次移动的距离. train的name是本次训练生成模型的名字, datasets用于选择使用训练数据集(DRIVE或者CHASEDB).
-
-2. 运行训练脚本train.py.
-
-   训练之后, 模型文件和权重文件将保存在./logs/目录之下.
-
-## 测评
-
-测试模型包含以下几个步骤:
-
-1. 修改配置文件config.txt中generator, evaluate两部分.
-
-   generator的stride_h, stride_w两个参数需要修改为16, 以保证分割结果能正确拼接. evaluate中的name指明测试模型的名字; best_last用于选择是调用训练时性能最好的模型还是最后输出的模型; datasets则用于选择测试数据集(DRIVE或CHASEDB).
-
-2. 运行测评脚本evaluate.py.
-
-   测试结果包括两部分: 一部分为可视化的分割结果, 输出到./logs/中; 另一部分为性能指标, mIOU, AP, mAP.
-
-下面是输出结果示例. 可视化结果中, 亮色代表正确分割, 绿色代表漏分割, 红色代表错误分割.
-
-![result](https://github.com/WILeroy/retina_unet/blob/master/logs/result.png)
+![result1](./resources/DRIVE.png)
+![result2](./resources/CHASEDB.png)

@@ -2,6 +2,9 @@
 height = 584
 width = 565
 
+pad_height = 608
+pad_width = 576
+
 test_images_path = ./datasets/DRIVE/test/images/
 test_labels_path = ./datasets/DRIVE/test/1st_manual/
 test_masks_path = ./datasets/DRIVE/test/mask/
@@ -11,10 +14,12 @@ train_masks_path = ./datasets/DRIVE/training/mask/
 
 h5py_save_path = ./datasets/DRIVE/h5py/
 
-
 [CHASEDB]
 height = 960
 width = 999
+
+pad_height = 960
+pad_width = 1024
 
 test_images_path = ./datasets/CHASEDB/test/images/
 test_labels_path = ./datasets/CHASEDB/test/1st_manual/
@@ -26,21 +31,13 @@ train_masks_path = ./datasets/CHASEDB/training/mask/
 h5py_save_path = ./datasets/CHASEDB/h5py/
 
 
-[generator]
-sub_height = 48
-sub_width = 48
-stride_h = 16
-stride_w = 16
-
-
 [train]
-name = retina
-datasets = DRIVE
-epochs_num = 20
-batch_size = 32
+name = CHASEDB_v1
+datasets = CHASEDB
+epochs_num = 200
+batch_size = 1
 
 
 [evaluate]
-name = retina
-best_last = best
-datasets = DRIVE
+name = CHASEDB_v1
+datasets = CHASEDB

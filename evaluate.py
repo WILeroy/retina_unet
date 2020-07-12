@@ -1,100 +1,56 @@
 import configparser
+from os import path, system
 
 import numpy as np
 from PIL import Image
+from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 from tensorflow.keras.models import model_from_json
 from tensorflow.keras.utils import to_categorical
 
 from generator import Generator
 from metric import SegmentationMetric
 from pre_process import pre_processing
-from utils import group_images, visualize
+from unet import Unet
+from utils import group_images, load_hdf5, visualize
 
+config = ConfigProto()
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
 
-def load_model(name, best_last):
-
+def load_model(name):
     model = model_from_json(
-        open('./logs/' + name + '_architecture.json').read())
-    model.load_weights('./logs/' + name + '_' + best_last + '_weights.h5')
+        open('./logs/'+name+'/architecture.json').read())
+    #model = Unet((960, 1024, 1), 5, train=True)
+    model.load_weights('./logs/'+name+'/weights.h5')
     model.summary()
-
     return model
 
-
-def merge(outputs, masks):
-    """ merge sub_outputs to full.
+def visualize_predicts(predicts, images_path, labels, masks, height, width, name):
     """
-    assert (len(outputs.shape) == 4)
-    assert (len(masks.shape) == 4)
-
-    height = masks.shape[1]
-    width = masks.shape[2]
-
-    h_num = 1 + int((height - 48) / 16)
-    w_num = 1 + int((width - 48) / 16)
-    pad_height = h_num * 16 + 48
-    pad_width = w_num * 16 + 48
-    
-    sub_num = (h_num + 1) * (w_num + 1)
-    full_num = masks.shape[0]
-    
-    offset = 0
-    merge_outputs = []
-
-    for i in range(full_num):
-
-        full = np.zeros([pad_height, pad_width, 1])
-        
-        # 4 corner.
-        full[:16, :16] = outputs[offset][:16, :16]
-        full[:16, -16:] = outputs[offset + w_num][:16, -16:]
-        full[-16:, :16] = outputs[offset + (w_num + 1) * h_num][-16:, :16]
-        full[-16:, -16:] = outputs[offset + sub_num - 1][-16:, -16:]
-        
-        # 4 side.
-        for h in range(h_num + 1):
-            full[16 * (h + 1):16 * (h + 2), :16] = outputs[
-                offset + h * (w_num + 1)][16:32, :16]
-            full[16 * (h + 1):16 * (h + 2), -16:] = outputs[
-                offset + (h + 1) * (w_num + 1) - 1][16:32, -16:]
-        
-        for w in range(w_num + 1):
-            full[:16, 16 * (w + 1):16 * (w + 2)] = outputs[
-                offset + w][:16, 16:32]
-            full[-16:, 16 * (w + 1):16 * (w + 2)] = outputs[
-                offset + h_num * (w_num + 1) + w][-16:, 16:32]
-            
-        # inside.
-        for h in range(h_num + 1):
-            for w in range(w_num + 1):
-                full[16 * (h + 1):16 * (h + 2), 16 * (w + 1):16 * (w + 2)] = (
-                    outputs[offset + h * (w_num + 1) + w][16:32, 16:32])
-
-        merge_outputs.append(full)
-        offset = (i + 1) * sub_num
-
-    merge_outputs = np.array(merge_outputs).astype(np.uint8)
-    merge_outputs = merge_outputs[:, :height, :width]
-    merge_outputs = merge_outputs * masks
-    
-    return merge_outputs
-
-
-def visualize_predicts(num, masks, labels, predicts):
+    right: green
+    error: red
+    missing: blue
     """
-    red: error
-    green: missed
-    light blue: right
-    """
-    outputs = labels * 2 + predicts
-    outputs = to_categorical(outputs)
-    vis = np.zeros([labels.shape[0], labels.shape[1], labels.shape[2], 3])
-    vis[:, :, :, 0] = outputs[:, :, :, 1]
-    vis[:, :, :, 1] = outputs[:, :, :, 2] + outputs[:, :, :, 3]
-    vis[:, :, :, 2] = outputs[:, :, :, 3] 
-    for i in range(20):
-        visualize(vis[i], './logs/'+str(i+1)+'.png')
+    if not path.exists('./logs/'+name+'/predicts/'):
+        system('mkdir ./logs/'+name+'/predicts/')
 
+    images = load_hdf5(images_path+'test_images.hdf5')
+
+    pad_height = labels.shape[1]
+    pad_width = labels.shape[2]
+
+    for i in range(len(predicts)):
+        vis = np.zeros((pad_height, pad_width, 3))
+        right = predicts[i] * np.squeeze(labels[i]) * np.squeeze(masks[i])
+        error = predicts[i] - right
+        missing = np.squeeze(labels[i]) - right
+        vis[:, :, 0] = error
+        vis[:, :, 1] = right
+        vis[:, :, 2] = missing
+
+        vis = np.concatenate((images[i], vis[:height, :width]*255), axis=0)
+        
+        visualize(vis, './logs/'+name+'/predicts/'+str(i+1)+'.png')
 
 def main():
     # Load config.
@@ -102,25 +58,39 @@ def main():
     config.read('config.txt')
     
     name = config.get('evaluate', 'name')
-    best_last = config.get('evaluate', 'best_last')
-    
-    # Load datasets.
+    if not path.exists('./logs/'+name):
+        system('mkdir ./logs/'+name)
     datasets = config.get('evaluate', 'datasets')
-    sub_images, images, labels, masks = Generator(datasets, 'test', config)()
     
-    print(sub_images.shape, sub_images.dtype,
-          np.min(sub_images), np.max(sub_images))
-    print(labels.shape, labels.dtype, np.min(labels), np.max(labels))
-    print(masks.shape, masks.dtype, np.min(masks), np.max(masks))
-    
-    # Load model and predict.
-    unet = load_model(name, best_last)
-    sub_predicts = unet.predict(sub_images)
-    sub_predicts = np.argmax(sub_predicts, axis=3)
-    predicts = merge(sub_predicts.reshape([-1, 48, 48, 1]), masks)
+    datasets_path = config.get(datasets, 'h5py_save_path')
+    height = int(config.get(datasets, 'height'))
+    width = int(config.get(datasets, 'width'))
+    pad_height = int(config.get(datasets, 'pad_height'))
+    pad_width = int(config.get(datasets, 'pad_width'))
 
-    print(predicts.shape, images.shape, labels.shape)
-    visualize_predicts(20, masks, labels, predicts)
+    # Load datasets.
+    images, labels, masks = Generator(
+        datasets_path, 'test', height, width, pad_height, pad_width)()
+    
+    visualize(
+        group_images(images, 4),
+        './logs/'+name+'/test_images.png').show()
+    visualize(
+        group_images(labels, 4),
+        './logs/'+name+'/test_labels.png').show()
+    visualize(
+        group_images(masks, 4),
+        './logs/'+name+'/test_masks.png').show()
+
+    # Load model and predict.
+    unet = load_model(name)
+    predicts = []
+    for i in range(images.shape[0]):
+        predict = unet.predict(images[i:i+1])
+        predict = np.squeeze(np.argmax(predict, axis=3))
+        predicts.append(predict)
+
+    visualize_predicts(predicts, datasets_path, labels, masks, height, width, name)
 
     # Evaluate.
     labels = (labels - ((masks + 1) % 2)).astype(np.int8)
@@ -128,16 +98,18 @@ def main():
     mIOU = 0
     PA = 0
     mPA = 0
-    for i in range(20):
-        metric.add_batch(labels[i], predicts[i].astype(np.int8))
+    for i in range(len(predicts)):
+        metric.add_batch(np.squeeze(labels[i]), predicts[i].astype(np.int8))
         mIOU += metric.mean_intersection_over_union()
         PA += metric.pixel_accuracy()
         mPA += metric.mean_pixel_accuracy()
         metric.reset()
-    print('mIOU:', mIOU/20)
-    print('PA:', PA/20)
-    print('mPA:', mPA/20)
     
+    result_eva = 'mIOU: {:.6f}\nPA: {:.6f}\nmPA: {:.6f}'.format(
+        mIOU/len(predicts), PA/len(predicts), mPA/len(predicts))
+    print(result_eva)
+    with open('./logs/'+name+'/evaluate.txt', 'w') as f:
+        f.write(result_eva)
 
 if __name__ == '__main__':
     main()

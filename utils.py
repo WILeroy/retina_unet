@@ -34,13 +34,16 @@ def group_images(data, per_row):
 
 # Visualize image (as PIL image, NOT as matplotlib).
 def visualize(data, save_path=None):
-    assert (len(data.shape) == 3)
+    assert(len(data.shape)==2 or len(data.shape)==3)
+
+    if len(data.shape) == 3:
+        assert(data.shape[2]==3 or data.shape[2]==1)
+        if data.shape[2] == 1:
+            data = np.squeeze(data)
     
     img = None
-    # Reshape image to (height, width, 3) or (height, width)
-    if data.shape[2] == 1:
-        data = np.reshape(data, (data.shape[0], data.shape[1]))
-    # Image pixel value range (0, 255)
+    # image shape: (height, width, 3) or (height, width)
+    # Image pixel value range: (0, 255)
     if np.max(data) > 1:
         img = Image.fromarray(data.astype(np.uint8))
     else:
