@@ -1,21 +1,21 @@
 # retina-unet
 
-该项目的实现参考了[orobix/retina-unet](https://github.com/orobix/retina-unet), 本人仅对其部分代码进行了重构. 重构的目的是使项目可以基于tensorflow2运行, 并且增加代码的可读性. 项目共完成了以下几部分的内容:
+该项目使用U-Net完成眼底血管分割任务, 主要包括以下内容:
 
-- [x] 视网膜图像预处理
-- [x] U-Net网络模型(tf2)
-- [x] 模型训练
-- [x] 结果评估与可视化
+- [x] 视网膜图像预处理(参考[orobix/retina-unet](https://github.com/orobix/retina-unet))
+- [x] U-Net模型(tf2)
+- [x] 数据pipeline(tf.data.Dataset)
+- [x] 模型训练与训练过程可视化
+- [x] 模型评估与结果可视化
 
 ## 0 运行环境(主要)
 
 ```
-h5py >= 2.10.0
-numpy >= 1.18.1
-opencv-python >= 3.4.9.33
-Pillow >= 7.1.2
-pydot-ng >= 2.0.0
-tensorflow-gpu >= 2.1.0
+absl-py >= 0.9.0
+numpy >= 1.18.5
+opencv-python >= 4.5.1.48
+scikit-image >= 0.17.2
+tensorflow-gpu >= 2.3.0
 ```
 ## 1 视网膜图像预处理
 
@@ -29,54 +29,74 @@ shape|(584, 565)|(960, 999)
 train num|20|20
 test num|20|8
 
-![dataset_sample](./resources/datasets_sample.jpg)
+![](images/datasets_sample.jpg)
 
 ### 1.2 数据集准备与预处理
 
-DRIVE和CHASEDB两个数据集的下载地址分别为:[DRIVE](https://pan.baidu.com/s/1M9k07LKul2c8gZBUzJ-TzA), w2cf; [CHAEDB](https://pan.baidu.com/s/1ZigFfnciLkQBd5AgMFWldg), 6tac. 数据集准备时, 首先从这两个网址下载数据集, 并将其分别解压到./datasets/路径下, 然后运行rewrite_datasets.py. 最终的结果如下所示, 其中h5py/路径下是重写的数据集(便于后续读取).
+DRIVE和CHASEDB两个数据集的下载地址和提取码: [data](https://pan.baidu.com/s/19-a6wg__PeOK54crLfK0JA), 3vnk. 下载数据集并解压后, 运行preprocess.py进行预处理: 
 
-* 数据集结构\
-datasets/\
-├── CHASEDB\
-│   ├── h5py\
-│   ├── test\
-│   └── training\
-└── DRIVE\
-    ├── h5py\
-    ├── test\
-    └── training
+```
+python preprocess.py --data_dir {data_dir}
+```
 
-数据集的预处理过程包括4步: 1) 彩色图像转灰度图像; 2) 数据标准化; 3) 直方图均衡化; 4) 伽马变换. 下面是预处理过程的可视化结果, 可以发现, 两张视网膜图像经过处理后都得到了较好的结果.
+数据集的预处理过程包括4步: 1) 彩色图像转灰度图像; 2) 数据标准化; 3) 直方图均衡化; 4) 伽马变换. 预处理过程的可视化结果如下, 可以发现，预处理可以增强图像的对比度、细节纹理等方面. 而后续实验表明, 预处理可以显著提高分割性能.
 
-![preprocess1](./resources/preprocess.jpg)
-![preprocess2](./resources/preprocess2.jpg)
+![](images/preprocess.jpg)
+![](images/preprocess2.jpg)
 
-## 2 U-Net网络模型(tf2)
 
-该项目使用U-Net实现眼底血管分割目标, 但是所实现的模型是对原始U-Net模型微调后的结果, 结构图如下所示. 
+## 2 U-Net模型(tf2)
 
-![retina_model](./resources/U-Net.png)
+论文链接: [U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/abs/1505.04597)
 
-## 3 模型训练
+相对论文中的网络结构, 项目中实现的模型进行了以下调整:
 
-训练模型包含2个步骤: 
+1. 通道数减少为原来的1/2.
+2. 卷积层使用边界填充, 跳跃连接时不用crop.
+3. 上采样可以选择使用转置卷积替代最近邻插值+1x1卷积.
 
-1. 修改配置文件config.txt中[train]部分的参数, 其中name用于命名本次实验, datasets用于指定本次实验所用的数据集.
-2. 运行训练脚本train.py. 训练之后, 中间结果, 模型文件和权重文件都将保存在./logs/$name$/目录之下.
+## 3 模型训练与训练过程可视化
+
+运行train.py训练模型: 
+
+```
+python train.py --logdir=log/retina \
+	--label_file_path=data/CHASEDB/training.txt \
+	--batch_size=1 \
+	--max_iters=2000 \
+	--preprocess=True \
+	--transpose_conv=True \
+```
+
+训练过程中的训练速度、学习率和模型损失可以通过tensorboard查看:
+
+```
+tensorboard --logdir {logdir}/train_logs
+```
+
+![](images/train.png)
 
 ## 4 结果评估与可视化
 
-与训练部分相同, 结果评估包含2个步骤:
+运行evaluate.py评估模型并可视化分割结果:
 
-1. 修改配置文件config.txt中[evaluate]部分, 保证实验名称与数据集是正确的.
-2. 运行测评脚本evaluate.py. 测试结果包括两部分: 一部分为可视化的分割结果, 输出到./logs/$name$/predicts/路径下; 另一部分为性能指标, mIOU, AP, mAP.
+```
+python evaluate.py --logdir=log/retina \
+	--label_file_path=data/CHASEDB/test.txt \
+	--batch_size=1 \
+	--preprocess=True \
+	--transpose_conv=True \
+    --visulize=True \
 
-下面是性能评估与可视化结果, 在可视化部分, 绿色代表正确分割, 红色代表错误分割, 蓝色代表漏分割. 
+# outputs.
+confuse mat:
+ [[4678420   87758]
+ [ 120699  360200]]
+IoU:  0.6334222562986124
+mIoU:  0.79538286
+```
 
-数据集\名称|mIOU|PA|mPA
-:-:|:--:|:-:|:-:
-DRIVE|0.818006|0.954971|0.879082|
-CHASEDB|0.80988|0.961048|0.9027
+下面是可视化结果, 绿色代表正确分割, 红色代表错误分割, 蓝色代表漏分割.
 
-![result1](./resources/DRIVE.png)
-![result2](./resources/CHASEDB.png)
+![](images/DRIVE.png)
+![](images/CHASEDB.png)
