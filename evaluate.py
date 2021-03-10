@@ -9,7 +9,7 @@ from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 from core.dataset import CreateDataset
 from core.unet import Unet
 
-
+# Setup dynamic gpu memory growth.
 config = ConfigProto()
 config.gpu_options.allow_growth = True
 session = InteractiveSession(config=config)
@@ -26,6 +26,7 @@ flags.DEFINE_boolean('preprocess', False, 'Whether to use preprocessed image.')
 flags.DEFINE_integer('num_classes', 2, 'Number of classes.')
 flags.DEFINE_boolean('transpose_conv', False,
                      'Whether to use Conv2DTranspose as upsample layer.')
+flags.DEFINE_boolean('visulize', False, 'Whether to visulize predicts.')
 
 
 def visulize_predicts(predicts, images, labels, masks, logdir, idx):
@@ -50,8 +51,10 @@ def visulize_predicts(predicts, images, labels, masks, logdir, idx):
     right = predicts[i][:, :, np.newaxis] * labels[i] * masks[i]
     error = predicts[i][:, :, np.newaxis] - right
     miss = labels[i] - right
+    
     vis = np.concatenate([error, right, miss], axis=-1)
     vis = np.concatenate([images[i], vis * 255], axis=0)
+    
     vis_path = os.path.join(visulize_dir, str(idx+i)+'.png')
     io.imsave(vis_path, vis.astype(np.uint8))
 
@@ -82,13 +85,14 @@ def main(argv):
     predicts = np.argmax(logits.numpy(), axis=-1)
 
     # optinal.
-    #visulize_predicts(predicts, images, labels, masks, FLAGS.logdir, count)
-    count += predicts.shape[0]
+    if FLAGS.visulize:
+      visulize_predicts(predicts, images, labels, masks, FLAGS.logdir, count)
+      count += predicts.shape[0]
 
     mIoU.update_state(labels, predicts, masks)
 
   cm = mIoU.total_cm
-  print('confuse mat:\n', cm.numpy())
+  print('confuse mat:\n', cm.numpy().astype(np.int32))
   print('IoU: ', (cm[1, 1] / (cm[0, 1] + cm[1, 0] + cm[1, 1])).numpy())
   print('mIoU: ', mIoU.result().numpy())
 

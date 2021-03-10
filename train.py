@@ -1,17 +1,17 @@
 import os
 import time
 
-from tensorflow.compat.v1 import ConfigProto, InteractiveSession
-
-config = ConfigProto()
-config.gpu_options.allow_growth = True
-session = InteractiveSession(config=config)
-
 import tensorflow as tf
 from absl import app, flags
+from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 
 from core.dataset import CreateDataset
 from core.unet import Unet
+
+# Setup dynamic gpu memory growth.
+config = ConfigProto()
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
 
 FLAGS = flags.FLAGS
 
@@ -119,16 +119,16 @@ def main(argv):
     # LR, losses and others summaries.
     with summary_writer.as_default():
       tf.summary.scalar(
-        'learning_rate', optimizer.learning_rate, step=global_step)
+        'train/learning_rate', optimizer.learning_rate, step=global_step)
       tf.summary.scalar(
-        'loss', loss, step=global_step)
+        'train/loss', loss, step=global_step)
     
       # Summary for number of global steps taken per second.
       current_time = time.time()
       if (last_summary_step_value is not None and
           last_summary_time is not None):
         tf.summary.scalar(
-            'global_steps_per_sec',
+            'train/global_steps_per_sec',
             (global_step_value - last_summary_step_value) /
             (current_time - last_summary_time),
             step=global_step)

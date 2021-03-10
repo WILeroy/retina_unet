@@ -3,28 +3,37 @@
 
 import os
 import shutil
+from absl import app, flags
 import numpy as np
 from cv2 import cv2
-import core.utils as utils
 
+
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string('data_dir', None, 'the dir of CHASEDB and DRIVE.')
 
 def pre_processing(image_path):
   image = cv2.imread(image_path)
   image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
+  
+  # remove normalization.
+
   clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
   image = clahe.apply(np.array(image, dtype = np.uint8))
+
+  # remove gamma transform.
 
   return image
 
 
-if __name__ == '__main__':
-  image_dirs = ['data/CHASEDB/training/images',
-                'data/CHASEDB/test/images', 
-                'data/DRIVE/test/images',
-                'data/DRIVE/training/images']
+def main(argv):
+  image_dirs = ['CHASEDB/training/images',
+                'CHASEDB/test/images', 
+                'DRIVE/test/images',
+                'DRIVE/training/images']
     
   for image_dir in image_dirs:
+    image_dir = os.path.join(FLAGS.data_dir, image_dir)
     new_dir = image_dir + '_pre'
     if not os.path.exists(new_dir): os.mkdir(new_dir)
 
@@ -35,3 +44,6 @@ if __name__ == '__main__':
       print('{} -> {}'.format(image_path, new_path))
       image = pre_processing(image_path)
       cv2.imwrite(new_path, image)
+
+if __name__ == '__main__':
+  app.run(main)
