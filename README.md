@@ -5,7 +5,7 @@
 - [x] 视网膜图像预处理(参考[orobix/retina-unet](https://github.com/orobix/retina-unet))
 - [x] U-Net模型(tf2)
 - [x] 数据pipeline(tf.data.Dataset)
-- [x] 模型训练与训练过程可视化
+- [x] 模型训练与训练过程可视化(distribute)
 - [x] 模型评估与结果可视化
 
 ## 0 运行环境(主要)
@@ -62,8 +62,17 @@ python preprocess.py --data_dir {data_dir}
 ```
 python train.py --logdir=log/retina \
 	--label_file_path=data/CHASEDB/training.txt \
-	--batch_size=1 \
+	--batch_size=4 \
 	--max_iters=2000 \
+	--preprocess=True \
+	--transpose_conv=True \
+```
+
+```
+python train_distribute.py --logdir=log/retina_distribute \
+	--label_file_path=data/CHASEDB/training.txt \
+	--batch_size=8 \
+	--max_iters=1000 \
 	--preprocess=True \
 	--transpose_conv=True \
 ```
@@ -86,7 +95,7 @@ python evaluate.py --logdir=log/retina \
 	--batch_size=1 \
 	--preprocess=True \
 	--transpose_conv=True \
-    --visulize=True \
+	--visulize=True \
 
 # outputs.
 confuse mat:

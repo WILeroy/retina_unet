@@ -3,15 +3,9 @@ import time
 
 import tensorflow as tf
 from absl import app, flags
-from tensorflow.compat.v1 import ConfigProto, InteractiveSession
 
 from core.dataset import CreateDataset
 from core.unet import Unet
-
-# Setup dynamic gpu memory growth.
-config = ConfigProto()
-config.gpu_options.allow_growth = True
-session = InteractiveSession(config=config)
 
 FLAGS = flags.FLAGS
 
@@ -20,8 +14,8 @@ flags.DEFINE_string('label_file_path', None,
                     'Path of training dataset label file.')
 flags.DEFINE_integer('seed', 0, 'Seed to training dataset.')
 flags.DEFINE_float('initial_lr', 3e-4, 'Initial learning rate.')
-flags.DEFINE_integer('batch_size', 2, 'Global batch size.')
-flags.DEFINE_integer('max_iters', 1000, 'Maximum iterations.')
+flags.DEFINE_integer('batch_size', 4, 'Global batch size.')
+flags.DEFINE_integer('max_iters', 2000, 'Maximum iterations.')
 flags.DEFINE_integer('save_interval', 100, 'Interval to save model weights.')
 flags.DEFINE_boolean('preprocess', False, 'Whether to use preprocessed image.')
 flags.DEFINE_boolean('augmentation', False, 'Whether to use augmentation.')
@@ -50,7 +44,7 @@ def main(argv):
 
   max_iters = FLAGS.max_iters
   initial_lr = FLAGS.initial_lr
-  print(FLAGS.preprocess)
+
   # -------------------------------------------------
   # Create the training set.
   train_dataset = CreateDataset(
@@ -94,7 +88,6 @@ def main(argv):
     with tf.GradientTape() as tape:
       logits = model.build_call(images, training=True)
       loss = loss_func(labels, logits)
-    
     gradients = tape.gradient(loss, model.trainable_weights)
     clipped, _ = tf.clip_by_global_norm(gradients, clip_norm=tf.constant(10.0))
     optimizer.apply_gradients(zip(clipped, model.trainable_weights))
@@ -104,6 +97,7 @@ def main(argv):
   global_step_value = optimizer.iterations.numpy()
   last_summary_step_value = None
   last_summary_time = None
+
   while global_step_value < max_iters:
     input_batch = next(train_iter)
 
